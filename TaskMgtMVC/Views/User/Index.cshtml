@@ -1,0 +1,256 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User API - CRUD Operations</title>
+</head>
+
+<body>
+    <h1>User Management - CRUD Operations</h1>
+
+    <!-- Add User Form -->
+    <h2>Add User</h2>
+    <form id="UserForm">
+        <label for="userId">User ID:</label>
+        <input type="number" id="userId" name="userId"><br><br>
+
+        <label for="firstName">First Name:</label>
+        <input type="text" id="firstName" name="firstName" required><br><br>
+
+        <label for="lastName">Last Name:</label>
+        <input type="text" id="lastName" name="lastName" required><br><br>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required><br><br>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required><br><br>
+
+        <label for="roleId">Role ID:</label>
+        <input type="number" id="roleId" name="roleId"><br><br>
+
+        <button type="button" onclick="addUser()">Add User (POST)</button>
+        <button type="button" onclick="updateUser()">Update User (PUT)</button>
+    </form>
+
+    <!-- DELETE User Form -->
+    <h2>DELETE User by ID</h2>
+    <form id="deleteUserForm">
+        <label for="deleteUserId">User ID:</label>
+        <input type="number" id="deleteUserId" name="deleteUserId" required><br><br>
+        <button type="button" onclick="deleteUser()">Delete User</button>
+    </form>
+
+    <label id="responseMessage"></label>
+
+    <!-- View All Users -->
+    <h2>View All Users</h2>
+    <button type="button" id="toggleUsersButton" onclick="fetchAllUsers()">Get All Users</button>
+    <div id="usersList"></div>
+
+    <!-- View User by Id -->
+    <h2>GET User by ID</h2>
+    <form id="getUserForm">
+        <label for="getUserId">User ID:</label>
+        <input type="number" id="getUserId" name="UserId" required><br><br>
+        <button type="button" onclick="getUser()">GET User</button>
+    </form>
+    <pre id="getResult"></pre>
+
+    <script>
+        const userApiUrl = 'https://localhost:7154/api/Users';
+        let isUserListVisible = false;
+
+        // Function to display messages
+        function displayMessage(message, isError = false) {
+            const responseLabel = document.getElementById("responseMessage");
+            responseLabel.style.color = isError ? "red" : "green";
+            responseLabel.textContent = message;
+        }
+
+        // Function to add a new User (POST)
+        function addUser() {
+            const userId = document.getElementById("userId").value;
+            const firstName = document.getElementById("firstName").value;
+            const lastName = document.getElementById("lastName").value;
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const roleId = document.getElementById("roleId").value;
+
+            if (!userId || !firstName || !lastName || !email || !password || !roleId) {
+                displayMessage("All fields are required!", true);
+                return;
+            }
+
+            const data = {
+                userId: parseInt(userId),
+                firstName: firstName,
+                lastName: lastName,
+                email: email,
+                password: password,
+                roleId: parseInt(roleId)
+                
+            };
+
+            fetch(userApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    displayMessage("User added successfully!");
+                    displaySingleUsers([data]);
+                });
+        }
+
+        // Function to update a User (PUT)
+        function updateUser() {
+            const userId = document.getElementById("userId").value;
+            const firstName = document.getElementById("firstName").value;
+            const lastName = document.getElementById("lastName").value;
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const roleId = document.getElementById("roleId").value;
+
+
+            // Validate fields before making the request
+            if (!userId || !firstName || !lastName || !email || !password || !roleId) {
+                displayMessage("All fields are required!", true);
+                return;
+            }
+
+            // Prepare the data object
+            const data = {
+                userId: parseInt(userId),
+                firstName: firstName,
+                lastName: lastName,
+                email: email,
+                password: password,
+                roleId: parseInt(roleId)
+            };
+
+            // Send the PUT request
+            fetch(`${userApiUrl}/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(response => {
+                    if (response.status === 204) {
+                        displayMessage("User updated successfully!");
+                        return null;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`Request failed with status ${response.status}`);
+                    }
+
+                    return response.json();
+                })
+                .then(data => {
+                    if (data) {
+                        displaySingleUsers([data]);
+                    }
+                    displayMessage("User updated successfully!");
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    displayMessage(`Error: ${error.message}`, true);
+                });
+        }
+
+        // Function to delete a User (DELETE)
+        function deleteUser() {
+            const userId = document.getElementById("deleteUserId").value;
+
+            if (!userId) {
+                displayMessage("Please enter a User ID to delete", true);
+                return;
+            }
+
+            fetch(`${userApiUrl}/${userId}`, { method: 'DELETE' })
+                .then(response => {
+                    if (response.status === 204) {
+                        displayMessage(`User ID ${userId} deleted`);
+                        fetchAllUsers();
+                    }
+                });
+        }
+
+        // Function to fetch all Users (GET)
+        function fetchAllUsers() {
+            const usersList = document.getElementById("usersList");
+            const button = document.getElementById("toggleUsersButton");
+
+            if (isUserListVisible) {
+                usersList.innerHTML = "";
+                button.textContent = "Get All Users";
+            } else {
+                fetch(userApiUrl)
+                    .then(response => response.json())
+                    .then(data => displayUsers(data));
+                button.textContent = "Hide Users";
+            }
+
+            isUserListVisible = !isUserListVisible; // Toggle visibility
+        }
+
+        // Function to fetch User by ID (GET)
+        function getUser() {
+            const userId = document.getElementById("getUserId").value;
+
+            fetch(`${userApiUrl}/${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const result = `
+                                        ID: ${data.userId}
+                                        firstName: ${data.firstName}
+                                        lastName : ${data.lastName}
+                                        email: ${data.email}
+                                        password : ${data.password}
+                                        roleId: ${data.roleId}
+                                    `;
+                    document.getElementById("getResult").textContent = result;
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Function to display a single User
+        function displaySingleUsers(users) {
+            const usersList = document.getElementById("usersList");
+            usersList.innerHTML = "<h3>User:</h3>";
+            usersList.innerHTML += users.map(user => `
+                                                    <div>
+                                                        <p><b>ID:</b> ${user.userId}</p>
+                                                        <p><b>ID:</b> ${user.firstName}</p>
+                                                        <p><b>ID:</b> ${user.lastName}</p>
+                                                        <p><b>ID:</b> ${user.email}</p>
+                                                        <p><b>ID:</b> ${user.password}</p>
+                                                        <p><b>ID:</b> ${user.roleId}</p>
+                                                        <hr>
+                                                    </div>
+                                                `).join('');
+        }
+
+        // Function to display all Users
+        function displayUsers(users) {
+            const usersList = document.getElementById("usersList");
+            usersList.innerHTML = "<h3>All Users:</h3>";
+            usersList.innerHTML += users.map(user => `
+                                                    <div>
+                                                         <p><b>ID:</b> ${user.userId}</p>
+                                                         <p><b>ID:</b> ${user.firstName}</p>
+                                                         <p><b>ID:</b> ${user.lastName}</p>
+                                                         <p><b>ID:</b> ${user.email}</p>
+                                                         <p><b>ID:</b> ${user.password}</p>
+                                                         <p><b>ID:</b> ${user.roleId}</p>
+                                                        <hr>
+                                                    </div>
+                                                `).join('');
+        }
+    </script>
+</body>
+</html>
+

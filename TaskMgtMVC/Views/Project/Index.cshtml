@@ -1,0 +1,243 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project API - CRUD Operations</title>
+</head>
+
+<body>
+    <h1>Project Management - CRUD Operations</h1>
+
+    <!-- Add Project Form -->
+    <h2>Add Project</h2>
+    <form id="RoleForm">
+        <label for="projectId">Project ID:</label>
+        <input type="number" id="projectId" name="projectId"><br><br>
+
+        <label for="projectName">Project Name:</label>
+        <input type="text" id="projectName" name="projectName" required><br><br>
+
+        <label for="startDate">Start Date:</label>
+        <input type="date" id="startDate" name="startDate" required><br><br>
+
+        <label for="endDate">End Date:</label>
+        <input type="date" id="endDate" name="endDate" required><br><br>
+
+        <label for="description">Description:</label>
+        <input type="text" id="description" name="description" required><br><br>
+
+        <button type="button" onclick="addProject()">Add Project (POST)</button>
+        <button type="button" onclick="updateProject()">Update Project (PUT)</button>
+    </form>
+
+    <!-- DELETE Project Form -->
+    <h2>DELETE Project by ID</h2>
+    <form id="deleteProjectForm">
+        <label for="deleteProjectId">Project ID:</label>
+        <input type="number" id="deleteProjectId" name="deleteProjectId" required><br><br>
+        <button type="button" onclick="deleteProject()">Delete Project</button>
+    </form>
+
+    <label id="responseMessage"></label>
+
+    <!-- View All Projects -->
+    <h2>View All Projects</h2>
+    <button type="button" id="toggleProjectsButton" onclick="fetchAllProjects()">Get All Projects</button>
+    <div id="projectsList"></div>
+
+    <!-- View Project by Id -->
+    <h2>GET Project by ID</h2>
+    <form id="getProjectForm">
+        <label for="getProjectId">Project ID:</label>
+        <input type="number" id="getProjectId" name="ProjectId" required><br><br>
+        <button type="button" onclick="getProject()">GET Project</button>
+    </form>
+    <pre id="getResult"></pre>
+
+    <script>
+        const projectApiUrl = 'https://localhost:7154/api/Projects';
+        let isProjectListVisible = false;
+
+        // Function to display messages
+        function displayMessage(message, isError = false) {
+            const responseLabel = document.getElementById("responseMessage");
+            responseLabel.style.color = isError ? "red" : "green";
+            responseLabel.textContent = message;
+        }
+
+        // Function to add a new Project (POST)
+        function addProject() {
+            const projectId = document.getElementById("projectId").value;
+            const projectName = document.getElementById("projectName").value;
+            const startDate = document.getElementById("startDate").value;
+            const endDate = document.getElementById("endDate").value;
+            const description = document.getElementById("description").value;
+
+            if (!projectId || !projectName || !startDate || !endDate || !description) {
+                displayMessage("All fields are required!", true);
+                return;
+            }
+
+            const data = {
+                projectId: parseInt(projectId),
+                projectName: projectName,
+                startDate: startDate,
+                endDate: endDate,
+                description: description
+            };
+
+            fetch(projectApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    displayMessage("Project added successfully!");
+                    displaySingleProjects([data]);
+                });
+        }
+
+        // Function to update a project (PUT)
+        function updateProject() {
+            const projectId = document.getElementById("projectId").value;
+            const projectName = document.getElementById("projectName").value;
+            const startDate = document.getElementById("startDate").value;
+            const endDate = document.getElementById("endDate").value;
+            const description = document.getElementById("description").value;
+
+            // Validate fields before making the request
+            if (!projectId || !projectName || !startDate || !endDate || !description) {
+                displayMessage("All fields are required!", true);
+                return;
+            }
+
+            // Prepare the data object
+            const data = {
+                projectId: parseInt(projectId),
+                projectName: projectName,
+                startDate: startDate,
+                endDate: endDate,
+                description: description
+            };
+
+            // Send the PUT request
+            fetch(`${projectApiUrl}/${projectId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(response => {
+                    if (response.status === 204) {
+                        displayMessage("Project updated successfully!");
+                        return null;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`Request failed with status ${response.status}`);
+                    }
+
+                    return response.json();
+                })
+                .then(data => {
+                    if (data) {
+                        displaySingleProjects([data]);
+                    }
+                    displayMessage("Project updated successfully!");
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    displayMessage(`Error: ${error.message}`, true);
+                });
+        }
+
+        // Function to delete a project (DELETE)
+        function deleteProject() {
+            const projectId = document.getElementById("deleteProjectId").value;
+
+            if (!projectId) {
+                displayMessage("Please enter a Project ID to delete", true);
+                return;
+            }
+
+            fetch(`${projectApiUrl}/${projectId}`, { method: 'DELETE' })
+                .then(response => {
+                    if (response.status === 204) {
+                        displayMessage(`Project ID ${projectId} deleted`);
+                        fetchAllProjects();
+                    }
+                });
+        }
+
+        // Function to fetch all projects (GET)
+        function fetchAllProjects() {
+            const projectsList = document.getElementById("projectsList");
+            const button = document.getElementById("toggleProjectsButton");
+
+            if (isProjectListVisible) {
+                projectsList.innerHTML = "";
+                button.textContent = "Get All Projects";
+            } else {
+                fetch(projectApiUrl)
+                    .then(response => response.json())
+                    .then(data => displayProjects(data));
+                button.textContent = "Hide Projects";
+            }
+
+            isProjectListVisible = !isProjectListVisible; // Toggle visibility
+        }
+
+        // Function to fetch project by ID (GET)
+        function getProject() {
+            const projectId = document.getElementById("getProjectId").value;
+
+            fetch(`${projectApiUrl}/${projectId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const result = `
+                            ID: ${data.projectId}
+                            projectName: ${data.projectName}
+                            startdate : ${data.startDate}
+                            enddate : ${data.endDate}
+                            description : ${data.description}
+                        `;
+                    document.getElementById("getResult").textContent = result;
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Function to display a single project
+        function displaySingleProjects(projects) {
+            const projectsList = document.getElementById("projectsList");
+            projectsList.innerHTML = "<h3>Project:</h3>";
+            projectsList.innerHTML += projects.map(project => `
+                    <div>
+                        <p><b>ID:</b> ${project.projectId}</p>
+                        <p><b>projectName:</b> ${project.projectName}</p>
+                        <p><b>startdate :</b> ${project.startDate}</p>
+                        <p><b>enddate :</b> ${project.endDate}</p>
+                        <p><b>description :</b> ${project.description}</p>
+                        <hr>
+                    </div>
+                `).join('');
+        }
+
+        // Function to display all projects
+        function displayProjects(projects) {
+            const projectsList = document.getElementById("projectsList");
+            projectsList.innerHTML = "<h3>All Projects:</h3>";
+            projectsList.innerHTML += projects.map(project => `
+                    <div>
+                        <p><b>ID: ${project.projectId}</b></p>
+                        <p><b>projectName: ${project.projectName}</b></p>
+                        <p><b>startdate : ${project.startDate}</b></p>
+                        <p><b>enddate : ${project.endDate}</b></p>
+                        <p><b>description : ${project.description}</b></p>
+                        <hr>
+                    </div>
+                `).join('');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task API - CRUD Operations</title>
+</head>
+
+<body>
+    <h1>Task Management - CRUD Operations</h1>
+
+    <!-- Add Task Form -->
+    <h2>Add Task</h2>
+    <form id="TaskForm">
+        <label for="taskId">Task ID:</label>
+        <input type="number" id="taskId" name="taskId"><br><br>
+
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title" required><br><br>
+
+        <label for="description">Description:</label>
+        <input type="text" id="description" name="description" required><br><br>
+
+        <label for="dueDate">Due Date:</label>
+        <input type="datetime" id="dueDate" name="dueDate" required><br><br>
+
+        <label for="priority">Priority:</label>
+        <input type="text" id="priority" name="priority" required><br><br>
+
+        <label for="status">Status:</label>
+        <input type="text" id="status" name="status" required><br><br>
+
+        <label for="projectId">Project ID:</label>
+        <input type="number" id="projectId" name="projectId"><br><br>
+
+        <label for="userId">User ID:</label>
+        <input type="number" id="userId" name="userId"><br><br>
+
+        <button type="button" onclick="addTask()">Add Task (POST)</button>
+        <button type="button" onclick="updateTask()">Update Task (PUT)</button>
+    </form>
+
+    <!-- DELETE Task Form -->
+    <h2>DELETE Task by ID</h2>
+    <form id="deleteTaskForm">
+        <label for="deleteTaskId">Task ID:</label>
+        <input type="number" id="deleteTaskId" name="deleteTaskId" required><br><br>
+        <button type="button" onclick="deleteTask()">Delete Task</button>
+    </form>
+
+    <label id="responseMessage"></label>
+
+    <!-- View All Tasks -->
+    <h2>View All Tasks</h2>
+    <button type="button" id="toggleTasksButton" onclick="fetchAllTasks()">Get All Tasks</button>
+    <div id="tasksList"></div>
+
+    <!-- View Task by Id -->
+    <h2>GET Task by ID</h2>
+    <form id="getTaskForm">
+        <label for="getTaskId">Task ID:</label>
+        <input type="number" id="getTaskId" name="TaskId" required><br><br>
+        <button type="button" onclick="getTask()">GET Task</button>
+    </form>
+    <pre id="getResult"></pre>
+
+    <script>
+        const taskApiUrl = 'https://localhost:7154/api/Tasks';
+        let isTaskListVisible = false;
+
+        // Function to display messages
+        function displayMessage(message, isError = false) {
+            const responseLabel = document.getElementById("responseMessage");
+            responseLabel.style.color = isError ? "red" : "green";
+            responseLabel.textContent = message;
+        }
+
+        // Function to add a new Task (POST)
+        function addTask() {
+            const taskId = document.getElementById("taskId").value;
+            const title = document.getElementById("title").value;
+            const description = document.getElementById("description").value;
+            const dueDate = document.getElementById("dueDate").value;
+            const priority = document.getElementById("priority").value;
+            const status = document.getElementById("status").value;
+            const userId = document.getElementById("userId").value;
+            const projectId = document.getElementById("projectId").value;
+
+            if (!taskId || !title || !priority || !status || !userId|| !projectId || !dueDate || !description) {
+                displayMessage("All fields are required!", true);
+                return;
+            }
+
+            const data = {
+                taskId: parseInt(taskId),
+                title: title,
+                description: description,
+                dueDate: dueDate,
+                priority: priority,
+                status: status,
+                userId: parseInt(userId),
+                projectId: parseInt(projectId)
+            };
+
+            fetch(taskApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    displayMessage("Task added successfully!");
+                    displaySingleTasks([data]);
+                });
+        }
+
+        // Function to update a Task (PUT)
+        function updateTask() {
+            const taskId = document.getElementById("taskId").value;
+            const title = document.getElementById("title").value;
+            const description = document.getElementById("description").value;
+            const dueDate = document.getElementById("dueDate").value;
+            const priority = document.getElementById("priority").value;
+            const status = document.getElementById("status").value;
+            const userId = document.getElementById("userId").value;
+            const projectId = document.getElementById("projectId").value;
+
+            // Validate fields before making the request
+            if (!taskId || !title || !priority || !status || !userId || !projectId || !dueDate || !description) {
+                displayMessage("All fields are required!", true);
+                return;
+            }
+
+            // Prepare the data object
+            const data = {
+                taskId: parseInt(taskId),
+                title: title,
+                description: description,
+                dueDate: dueDate,
+                priority: priority,
+                status: status,
+                userId: parseInt(userId),
+                projectId: parseInt(projectId)
+            };
+
+            // Send the PUT request
+            fetch(`${taskApiUrl}/${taskId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(response => {
+                    if (response.status === 204) {
+                        displayMessage("Task updated successfully!");
+                        return null;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`Request failed with status ${response.status}`);
+                    }
+
+                    return response.json();
+                })
+                .then(data => {
+                    if (data) {
+                        displaySingleTasks([data]);
+                    }
+                    displayMessage("Task updated successfully!");
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    displayMessage(`Error: ${error.message}`, true);
+                });
+        }
+
+        // Function to delete a Task (DELETE)
+        function deleteTask() {
+            const taskId = document.getElementById("deleteTaskId").value;
+
+            if (!taskId) {
+                displayMessage("Please enter a Task ID to delete", true);
+                return;
+            }
+
+            fetch(`${taskApiUrl}/${taskId}`, { method: 'DELETE' })
+                .then(response => {
+                    if (response.status === 204) {
+                        displayMessage(`Task ID ${taskId} deleted`);
+                        fetchAllTasks();
+                    }
+                });
+        }
+
+        // Function to fetch all Tasks (GET)
+        function fetchAllTasks() {
+            const tasksList = document.getElementById("tasksList");
+            const button = document.getElementById("toggleTasksButton");
+
+            if (isTaskListVisible) {
+                tasksList.innerHTML = "";
+                button.textContent = "Get All Tasks";
+            } else {
+                fetch(taskApiUrl)
+                    .then(response => response.json())
+                    .then(data => displayTasks(data));
+                button.textContent = "Hide Tasks";
+            }
+
+            isTaskListVisible = !isTaskListVisible; // Toggle visibility
+        }
+
+        // Function to fetch Task by ID (GET)
+        function getTask() {
+            const taskId = document.getElementById("getTaskId").value;
+
+            fetch(`${taskApiUrl}/${taskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const result = `
+                                            ID: ${data.taskId}
+                                            title: ${data.title}
+                                            description : ${data.description}
+                                            duedate : ${data.dueDate}
+                                            priority : ${data.priority}
+                                            status : ${data.status}
+                                            userID: ${data.userId}
+                                            projectID: ${data.projectId}
+                                        `;
+                    document.getElementById("getResult").textContent = result;
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Function to display a single Task
+        function displaySingleTasks(tasks) {
+            const tasksList = document.getElementById("tasksList");
+            tasksList.innerHTML = "<h3>Task:</h3>";
+            tasksList.innerHTML += tasks.map(task => `
+                                    <div>
+                                        <p><b>ID:</b> ${task.taskId}</p>
+                                        <p><b>title:</b> ${task.title}</p>
+                                        <p><b>description :</b> ${task.description}</p>
+                                        <p><b>duedate :</b> ${task.dueDate}</p>
+                                        <p><b>priority :</b> ${task.priority}</p>
+                                        <p><b>status :</b> ${task.status}</p>
+                                        <p><b>userID :</b> ${task.userId}</p>
+                                        <p><b>projectID :</b> ${task.projectId}</p>
+
+                                        <hr>
+                                    </div>
+                                `).join('');
+        }
+
+        // Function to display all Tasks
+        function displayTasks(tasks) {
+            const tasksList = document.getElementById("tasksList");
+            tasksList.innerHTML = "<h3>All Tasks:</h3>";
+            tasksList.innerHTML += tasks.map(task => `
+                                    <div>
+                                        <p><b>ID:</b> ${task.taskId}</p>
+                                        <p><b>title:</b> ${task.title}</p>
+                                        <p><b>description :</b> ${task.description}</p>
+                                        <p><b>duedate :</b> ${task.dueDate}</p>
+                                        <p><b>priority :</b> ${task.priority}</p>
+                                        <p><b>status :</b> ${task.status}</p>
+                                        <p><b>userID :</b> ${task.userId}</p>
+                                        <p><b>projectID :</b> ${task.projectId}</p>
+
+                                        <hr>
+                                    </div>
+                                `).join('');
+        }
+    </script>
+</body>
+</html>
+

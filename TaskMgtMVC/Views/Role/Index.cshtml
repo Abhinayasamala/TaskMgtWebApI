@@ -1,0 +1,229 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Role API - CRUD Operations</title>
+</head>
+
+<body>
+    <h1>Role Management - CRUD Operations</h1>
+
+    <!-- Add Role Form  -->
+    <h2>Add Role</h2>
+    <form id="RoleForm">
+        <label for="roleId">Role ID:</label>
+        <input type="number" id="roleId" name="roleId"><br><br>
+
+        <label for="roleName"> Name:</label>
+        <input type="text" id="roleName" name="roleName" required><br><br>
+
+        <button type="button" onclick="addRole()">Add Role (POST)</button>
+        <button type="button" onclick="updateRole()">Update Role (PUT)</button>
+    </form>
+
+    <!-- DELETE Role Form  -->
+    <h2>DELETE Role by ID</h2>
+    <form id="deleteRoleForm">
+        <label for="deleteRoleId">Role ID:</label>
+        <input type="number" id="deleteRoleId" name="deleteRoleId" required><br><br>
+        <button type="button" onclick="deleteRole()">Delete Role</button>
+    </form>
+
+    <label id="responseMessage"></label>
+
+    <!-- View All Roles -->
+    <h2>View All Roles</h2>
+    <button type="button" id="toggleRolesButton" onclick="fetchAllRoles()">Get All Roles</button>
+    <div id="rolesList"></div>
+
+    <!-- View Role by Id -->
+    <h2>GET Role by ID</h2>
+    <form id="getRoleForm">
+        <label for="getRoleId">Role ID:</label>
+        <input type="number" id="getRoleId" name="RoleId" required><br><br>
+        <button type="button" onclick="getRole()">GET Role</button>
+    </form>
+<pre id="getResult"></pre>
+
+    <script>
+        const roleApiUrl = 'https://localhost:7154/api/Roles';
+        let isRoleListVisible = false;
+
+        // Function to display messages
+        function displayMessage(message, isError = false) {
+            const responseLabel = document.getElementById("responseMessage");
+            responseLabel.style.color = isError ? "red" : "green";
+            responseLabel.textContent = message;
+        }
+
+        // Function to add a new role (POST)
+        function addRole() {
+            const roleId = document.getElementById("roleId").value;
+            const roleName = document.getElementById("roleName").value;
+
+
+            if (!roleName || !roleId) {
+                displayMessage("All fields are required!", true);
+                return;
+            }
+
+            const data = {
+                roleId: parseInt(roleId),
+                roleName: roleName,
+
+            };
+
+            fetch(roleApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                displayMessage("Role added successfully!");
+                displaysingleRoles([data]);
+            });
+        }
+
+        // Function to update an role (PUT)
+        function updateRole() {
+            const roleId = document.getElementById("roleId").value;
+            const roleName = document.getElementById("roleName").value;
+
+
+            // Validate fields before making the request
+            if (!roleId || !roleName ) {
+                displayMessage("All fields are required!", true);
+                return;
+            }
+
+            // Prepare the data object
+            const data = {
+                roleId: parseInt(roleId),
+                roleName: roleName,
+
+            };
+
+            // Send the PUT request
+            fetch(`${roleApiUrl}/${roleId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (response.status === 204) {
+                    // Update message if status is 204 No Content (successful update)
+                    displayMessage("Role updated successfully!");
+                    return null;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
+
+                // If there is a response body, parse it
+                return response.json();
+            })
+            .then(data => {
+                if (data) {
+                    displaysingleRoles([data]);
+                }
+                // Ensure the message is displayed even if there's no response body
+                displayMessage("Role updated successfully!");
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                displayMessage(`Error: ${error.message}`, true);
+            });
+        }
+
+        // Function to delete an role (DELETE)
+        function deleteRole() {
+            const roleId = document.getElementById("deleteRoleId").value;
+
+            if (!roleId) {
+                displayMessage("Please enter an Role ID to delete", true);
+                return;
+            }
+
+            fetch(`${roleApiUrl}/${roleId}`, { method: 'DELETE' })
+                .then(response => {
+                    if (response.status === 204) {
+                        displayMessage(`Role ID ${roleId} deleted`);
+                        fetchAllRoles();
+                    }
+                });
+        }
+
+
+    // Function to fetch all roles (GET)
+function fetchAllRoles() {
+    const rolesList = document.getElementById("rolesList");
+    const button = document.getElementById("toggleRolesButton");
+
+    if (isRoleListVisible) {
+        // If the list is currently visible, hide it
+        rolesList.innerHTML = "";
+        button.textContent = "Get All Roles";
+    } else {
+        // If the list is hidden, fetch the data and display it
+        fetch(roleApiUrl)
+            .then(response => response.json())
+            .then(data => displayRoles(data));
+        button.textContent = "Hide Roles";
+    }
+
+    isRoleListVisible = !isRoleListVisible; // Toggle the visibility flag
+}
+
+
+
+
+        // Function to fetch roles by ID (GET)
+    function getRole(){
+    const roleId = document.getElementById("getRoleId").value;
+
+    fetch(`${roleApiUrl}/${roleId}`)
+        .then(response => response.json())  // Parse the JSON response
+        .then(data => {
+            const result = `
+                ID: ${data.roleId}
+                roleName: ${data.roleName}
+            `;  // Format the response as plain text
+            document.getElementById("getResult").textContent = result;  // Display it in the <pre> tag
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+        // Function to display a single role
+        function displaysingleRoles(roles) {
+            const rolesList = document.getElementById("rolesList");
+            rolesList.innerHTML = "<h3>Role:</h3>";
+            rolesList.innerHTML += roles.map(role => `
+                <div>
+                    <p><b>roleID:</b> ${role.roleId}</p>
+                    <p><b> Name:</b> ${role.roleName }</p>
+
+                    <hr>
+                </div>
+            `).join('');
+        }
+        // Function to display all roles
+        function displayRoles(roles) {
+            const rolesList = document.getElementById("rolesList");
+            rolesList.innerHTML = "<h3>All Roles:</h3>";
+            rolesList.innerHTML += roles.map(role => `
+                <div>
+                    <p><b>ID:</b> ${role.roleId}</p>
+                    <p><b> Name:</b> ${role.roleName }</p>
+
+                    <hr>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
+
+
